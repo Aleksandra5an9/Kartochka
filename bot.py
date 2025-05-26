@@ -19,7 +19,6 @@ query_list = [
     'пижама мужская шелковая',
     'джерси для рыбалки',
     'одежда для рыбалки',
-    'джерси для рыбалки',
     'джерси мужской'
 ]
 max_page = 3
@@ -33,6 +32,8 @@ id_to_sku = {
     375740835: 'RRPPKLBE0325',
     375742309: 'RRPPKLBKSS0425',
     375744765: 'RRPPKLWTSS0425',
+    332051245: 'RRJGREYS010225',
+    375744766: 'RRPPKLBESS0425',
     332051245: 'RRJGREYS010225',
     332082880: 'RRJLTGREYP020225',
     332084081: 'RRJGREEN030225',
@@ -77,7 +78,12 @@ def get_card_positions():
     arr = []
     for query in query_list:
         for page in range(1, max_page + 1):
-            url = f"https://search.wb.ru/exactmatch/ru/common/v13/search?ab_testing=false&appType=1&curr=rub&dest=-1257484&hide_dtype=13&lang=ru&page={page}&query={query}&resultset=catalog&sort=popular&spp=30&suppressSpellcheck=false"
+            url = (
+                f"https://search.wb.ru/exactmatch/ru/common/v13/search?"
+                f"ab_testing=false&appType=1&curr=rub&dest=-1257484&hide_dtype=13&"
+                f"lang=ru&page={page}&query={query}&resultset=catalog&sort=popular&spp=30&"
+                f"suppressSpellcheck=false"
+            )
             try:
                 res = requests.get(url)
                 if res.status_code != 200:
@@ -151,7 +157,7 @@ def export_to_excel():
 
     send_to_telegram("📈 Еженедельный отчёт и графики обновлены.")
 
-# === Проверка на команду /report ===
+# === Проверка на команду /report или /status ===
 def check_for_commands():
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
@@ -167,7 +173,7 @@ def check_for_commands():
         chat_id = message.get('chat', {}).get('id')
         update_id = last_update['update_id']
 
-                if text.strip() == '/report' and str(chat_id) == CHAT_ID:
+        if text.strip() == '/report' and str(chat_id) == CHAT_ID:
             send_to_telegram("📤 Отправляю текущий отчёт и графики...")
             if os.path.exists(excel_file):
                 send_file_to_telegram(excel_file, "📊 Excel-отчёт")
@@ -175,7 +181,7 @@ def check_for_commands():
                 send_file_to_telegram(graph_zip, "🖼 Графики")
             else:
                 send_to_telegram("⚠️ Графики ещё не сформированы.")
-        
+
         elif text.strip() == '/status' and str(chat_id) == CHAT_ID:
             if os.path.exists(history_file):
                 df = pd.read_csv(history_file)
@@ -194,7 +200,8 @@ def check_for_commands():
             else:
                 send_to_telegram("❗ История ещё не создана.")
 
-            requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={update_id + 1}")
+        # Сброс offset, чтобы не обрабатывать один и тот же апдейт повторно
+        requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={update_id + 1}")
     except Exception as e:
         print(f"❗ Ошибка в check_for_commands: {e}")
 
