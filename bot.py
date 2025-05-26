@@ -16,7 +16,7 @@ query_list = [
     'пижама мужская',
     'пижама мужская со штанами',
     'костюм для дома мужской',
-    'пижама мужская шелковая'
+    'пижама мужская шелковая',
     'джерси для рыбалки',
     'одежда для рыбалки',
     'джерси для рыбалки',
@@ -49,7 +49,7 @@ graph_zip = 'graphs.zip'
 os.makedirs('data', exist_ok=True)
 os.makedirs('graphs', exist_ok=True)
 
-# === Telegram сообщение ===
+# === Telegram текстовое сообщение ===
 def send_to_telegram(text):
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -60,7 +60,19 @@ def send_to_telegram(text):
     except Exception as e:
         print(f"Ошибка отправки Telegram: {e}")
 
-# === Получение данных ===
+# === Telegram отправка файла ===
+def send_file_to_telegram(file_path, caption=""):
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
+        with open(file_path, 'rb') as f:
+            files = {'document': f}
+            data = {'chat_id': CHAT_ID, 'caption': caption}
+            r = requests.post(url, data=data, files=files)
+            print(f"Отправка файла: {r.status_code}")
+    except Exception as e:
+        print(f"Ошибка отправки файла: {e}")
+
+# === Получение позиций карточек ===
 def get_card_positions():
     arr = []
     for query in query_list:
@@ -85,7 +97,7 @@ def get_card_positions():
                 print(f"Ошибка запроса: {e}")
     return arr
 
-# === Главная задача ===
+# === Главная задача сбора данных ===
 def job():
     print("🟡 Выполняется задача job...")
     send_to_telegram("🚀 Бот запущен. Сбор данных начат.")
@@ -110,7 +122,7 @@ def job():
 
     send_to_telegram(message)
 
-# === Графики и Excel ===
+# === Экспорт отчёта и построение графиков ===
 def export_to_excel():
     print("📊 Экспорт в Excel начат...")
     if not os.path.exists(history_file):
@@ -139,6 +151,52 @@ def export_to_excel():
 
     send_to_telegram("📈 Еженедельный отчёт и графики обновлены.")
 
+# === Проверка на команду /report ===
+def check_for_commands():
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+        res = requests.get(url)
+        updates = res.json()['result']
+
+        if not updates:
+            return
+
+        last_update = updates[-1]
+        message = last_update.get('message', {})
+        text = message.get('text', '')
+        chat_id = message.get('chat', {}).get('id')
+        update_id = last_update['update_id']
+
+        if text.strip() == '/report' and str(chat_id) == CHAT_ID:
+            send_to_telegram("📤 Отправляю текущий отчёт и графики...")
+            if os.path.exists(excel_file):
+                send_file_to_telegram(excel_file, "📊 Excel-отчёт")
+            if os.path.exists(graph_zip):
+                send_file_to_telegram(graph_zip, "🖼 Графики")
+            else:
+                send_to_telegram("⚠️ Графики ещё не сформированы.")
+                    elif text.strip() == '/status' and str(chat_id) == CHAT_ID:
+            if os.path.exists(history_file):
+                df = pd.read_csv(history_file)
+                df['Time'] = pd.to_datetime(df['Time'])
+                latest_df = df.sort_values('Time').groupby(['Query', 'SKU']).last().reset_index()
+
+                msg = "📊 Последние позиции:\n\n"
+                for _, row in latest_df.iterrows():
+                    msg += (
+                        f"🔍 {row['Query']}\n"
+                        f"🆔 {row['SKU']}\n"
+                        f"📍 {row['Position']} (Промо: {row['PromoPosition']})\n"
+                        f"🕓 {row['Time']:%Y-%m-%d %H:%M}\n\n"
+                    )
+                send_to_telegram(msg[:4096])  # Учитываем лимит сообщений Telegram
+            else:
+                send_to_telegram("❗ История ещё не создана.")
+
+            requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={update_id + 1}")
+    except Exception as e:
+        print(f"❗ Ошибка в check_for_commands: {e}")
+
 # === Планировщик ===
 schedule.every(4).hours.do(job)
 schedule.every().sunday.at("10:00").do(export_to_excel)
@@ -148,9 +206,11 @@ job()
 
 print("⏳ Бот запущен. Ожидание задач...")
 
+# Основной цикл
 while True:
     try:
         schedule.run_pending()
+        check_for_commands()
         time.sleep(1)
     except Exception as e:
         print(f"❗ Ошибка в основном цикле: {e}")
