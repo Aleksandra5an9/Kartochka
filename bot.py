@@ -167,7 +167,7 @@ def check_for_commands():
         chat_id = message.get('chat', {}).get('id')
         update_id = last_update['update_id']
 
-        if text.strip() == '/report' and str(chat_id) == CHAT_ID:
+                if text.strip() == '/report' and str(chat_id) == CHAT_ID:
             send_to_telegram("📤 Отправляю текущий отчёт и графики...")
             if os.path.exists(excel_file):
                 send_file_to_telegram(excel_file, "📊 Excel-отчёт")
@@ -175,7 +175,8 @@ def check_for_commands():
                 send_file_to_telegram(graph_zip, "🖼 Графики")
             else:
                 send_to_telegram("⚠️ Графики ещё не сформированы.")
-                    elif text.strip() == '/status' and str(chat_id) == CHAT_ID:
+        
+        elif text.strip() == '/status' and str(chat_id) == CHAT_ID:
             if os.path.exists(history_file):
                 df = pd.read_csv(history_file)
                 df['Time'] = pd.to_datetime(df['Time'])
