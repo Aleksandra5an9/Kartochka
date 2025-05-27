@@ -9,7 +9,7 @@ from zipfile import ZipFile
 
 # === Telegram Bot настройки ===
 TOKEN = os.getenv("TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+CHAT_IDS = os.getenv("CHAT_ID", "").split(",")
 
 # === Параметры поиска ===
 query_list = [
@@ -32,7 +32,6 @@ id_to_sku = {
     375740835: 'RRPPKLBE0325',
     375742309: 'RRPPKLBKSS0425',
     375744765: 'RRPPKLWTSS0425',
-    332051245: 'RRJGREYS010225',
     375744766: 'RRPPKLBESS0425',
     332051245: 'RRJGREYS010225',
     332082880: 'RRJLTGREYP020225',
@@ -52,26 +51,27 @@ os.makedirs('graphs', exist_ok=True)
 
 # === Telegram текстовое сообщение ===
 def send_to_telegram(text):
-    try:
-        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        payload = {'chat_id': CHAT_ID, 'text': text}
-        r = requests.post(url, data=payload)
-        print(f"Telegram status: {r.status_code}")
-        print(r.text)
-    except Exception as e:
-        print(f"Ошибка отправки Telegram: {e}")
+    for chat_id in CHAT_IDS:
+        try:
+            url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+            payload = {'chat_id': chat_id.strip(), 'text': text}
+            r = requests.post(url, data=payload)
+            print(f"Telegram status ({chat_id}): {r.status_code}")
+        except Exception as e:
+            print(f"Ошибка отправки Telegram ({chat_id}): {e}")
 
 # === Telegram отправка файла ===
 def send_file_to_telegram(file_path, caption=""):
-    try:
-        url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
-        with open(file_path, 'rb') as f:
-            files = {'document': f}
-            data = {'chat_id': CHAT_ID, 'caption': caption}
-            r = requests.post(url, data=data, files=files)
-            print(f"Отправка файла: {r.status_code}")
-    except Exception as e:
-        print(f"Ошибка отправки файла: {e}")
+    for chat_id in CHAT_IDS:
+        try:
+            url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
+            with open(file_path, 'rb') as f:
+                files = {'document': f}
+                data = {'chat_id': chat_id.strip(), 'caption': caption}
+                r = requests.post(url, data=data, files=files)
+                print(f"Отправка файла ({chat_id}): {r.status_code}")
+        except Exception as e:
+            print(f"Ошибка отправки файла ({chat_id}): {e}")
 
 # === Получение позиций карточек ===
 def get_card_positions():
@@ -173,7 +173,7 @@ def check_for_commands():
         chat_id = message.get('chat', {}).get('id')
         update_id = last_update['update_id']
 
-        if text.strip() == '/report' and str(chat_id) == CHAT_ID:
+        if text.strip() == '/report' and str(chat_id) in CHAT_IDS:
             send_to_telegram("📤 Отправляю текущий отчёт и графики...")
             if os.path.exists(excel_file):
                 send_file_to_telegram(excel_file, "📊 Excel-отчёт")
@@ -182,7 +182,7 @@ def check_for_commands():
             else:
                 send_to_telegram("⚠️ Графики ещё не сформированы.")
 
-        elif text.strip() == '/status' and str(chat_id) == CHAT_ID:
+        elif text.strip() == '/status' and str(chat_id) in CHAT_IDS:
             if os.path.exists(history_file):
                 df = pd.read_csv(history_file)
                 df['Time'] = pd.to_datetime(df['Time'])
