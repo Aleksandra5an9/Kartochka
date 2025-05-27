@@ -9,7 +9,7 @@ from zipfile import ZipFile
 
 # === Telegram Bot настройки ===
 TOKEN = os.getenv("TOKEN")
-CHAT_IDS = os.getenv("CHAT_ID", "").split(",")
+CHAT_IDS = os.getenv("CHAT_IDS", "").split(",")
 
 # === Параметры поиска ===
 query_list = [
