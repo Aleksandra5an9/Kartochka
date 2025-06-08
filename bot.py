@@ -220,6 +220,37 @@ while True:
         schedule.run_pending()
         check_for_commands()
         time.sleep(1)
+from flask import Flask
+import threading
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Бот работает!"
+
+def run_scheduler():
+    import schedule
+    import time
+    while True:
+        schedule.run_pending()
+        check_for_commands()
+        time.sleep(1)
+
+if __name__ == '__main__':
+    # Запускаем твои задачи сразу
+    job()
+
+    # Запускаем планировщик в отдельном потоке
+    scheduler_thread = threading.Thread(target=run_scheduler)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
+
+    # Запускаем Flask, слушаем порт для Render
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
     except Exception as e:
         print(f"❗ Ошибка в основном цикле: {e}")
         send_to_telegram(f"❗ Ошибка в цикле: {e}")
