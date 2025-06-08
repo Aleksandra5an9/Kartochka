@@ -6,6 +6,8 @@ import time
 import os
 import matplotlib.pyplot as plt
 from zipfile import ZipFile
+from flask import Flask
+import threading
 
 # === Telegram Bot настройки ===
 TOKEN = os.getenv("TOKEN")
@@ -209,21 +211,7 @@ def check_for_commands():
 schedule.every(4).hours.do(job)
 schedule.every().sunday.at("10:00").do(export_to_excel)
 
-# Вызов сразу при старте
-job()
-
-print("⏳ Бот запущен. Ожидание задач...")
-
-# Основной цикл
-while True:
-    try:
-        schedule.run_pending()
-        check_for_commands()
-        time.sleep(1)
-from flask import Flask
-import threading
-import os
-
+# === Flask app ===
 app = Flask(__name__)
 
 @app.route('/')
@@ -231,15 +219,13 @@ def index():
     return "Бот работает!"
 
 def run_scheduler():
-    import schedule
-    import time
     while True:
         schedule.run_pending()
         check_for_commands()
         time.sleep(1)
 
 if __name__ == '__main__':
-    # Запускаем твои задачи сразу
+    # Запускаем задачу сразу при старте
     job()
 
     # Запускаем планировщик в отдельном потоке
@@ -247,10 +233,6 @@ if __name__ == '__main__':
     scheduler_thread.daemon = True
     scheduler_thread.start()
 
-    # Запускаем Flask, слушаем порт для Render
+    # Запускаем Flask
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-
-    except Exception as e:
-        print(f"❗ Ошибка в основном цикле: {e}")
-        send_to_telegram(f"❗ Ошибка в цикле: {e}")
